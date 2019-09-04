@@ -14,6 +14,7 @@ namespace WindowsFormsAndVSTO
 {
     public partial class Form1 : Form
     {
+        string wcName = AppDomain.CurrentDomain.BaseDirectory + "words.txt";
         public Form1()
         {
             InitializeComponent();
@@ -36,15 +37,8 @@ namespace WindowsFormsAndVSTO
 
         private void Workbook_SheetBeforeDoubleClick(object Sh, Range Target, ref bool Cancel)
         {
-            foreach (Range r in Target.Cells)
-            {
-                string text = (string)r.Text;
-                if (!String.IsNullOrEmpty(text))
-                {
-                    textBox1.Invoke(new System.Action(() => textBox1.AppendText(text)));
-                }
-            }
-            
+            string pickValue = YDDicHelper.Create().TransText(Target.Value);
+            this.Invoke((EventHandler)delegate { System.IO.File.AppendAllText(wcName, pickValue + Environment.NewLine); });
         }
     }
 }
