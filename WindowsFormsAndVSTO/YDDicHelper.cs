@@ -30,89 +30,89 @@ namespace WindowsFormsAndVSTO
             string wValue = string.Empty;
             string bIn = string.Empty;
             string star = string.Empty;
-           
+
             System.Net.Http.HttpClient httpClient = new System.Net.Http.HttpClient();
-            string apiurl = @"http://dict.youdao.com/jsonapi?jsonversion=2&q="+word;
+            string apiurl = @"http://dict.youdao.com/jsonapi?jsonversion=2&q=" + word;
             System.Net.Http.HttpResponseMessage response = httpClient.GetAsync(apiurl).Result;
             if (response.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var wtext = Newtonsoft.Json.Linq.JObject.Parse(response.Content.ReadAsStringAsync().Result);
                 var vDict = wtext["meta"]["dicts"];
 
-                foreach (var item in vDict)
+                foreach (var item in vDict.Children())
                 {
-                    if (item.ToString() == "ec")
+                    if (item.ToString() == "ec" && wtext["ec"]["exam_type"] != null)
                     {
-                        foreach (var v in wtext["ec"])
-                        {
-                            bIn = v.ToString().Split(':')[1].Replace("\"","").Replace("\r","").Replace("\n", "");
-                            break;
-                        }
+                        bIn = wtext["ec"]["exam_type"].ToString().Replace("\r\n", "").Replace("\"", "");
+                        // wValue = wtext["ec"]["word"][0]["trs"].ToString().Replace("\r\n", "").Replace("\"", "");
+
                     }
-                    #region
-                    //if (item.ToString() == "collins")
-                    //{
-                    //    foreach (var v in wtext["collins"])
-                    //    {
-                    //        if (v.HasValues)
-                    //            foreach (var x in v)
-                    //            {
-                    //                if (x.HasValues) foreach (var x2 in x.Children())
-                    //                    {
-                    //                        if (x2.HasValues)
-                    //                        {
-                    //                            foreach (var x3 in x2.Children())
-                    //                            {
-                    //                                if (x3.HasValues)
-                    //                                {
-                    //                                    foreach (var x4 in x3)
-                    //                                    {
-                    //                                        if (x4.HasValues)
-                    //                                            foreach (var x5 in x4)
-                    //                                            {
-                    //                                                if (x5.HasValues)
-                    //                                                    foreach (var x6 in x5)
-                    //                                                    {
-                    //                                                        string sp = "\"star\":(?<wv>[^\r]+)";
-                    //                                                        var ms = System.Text.RegularExpressions.Regex.Matches(x6.ToString(), sp, System.Text.RegularExpressions.RegexOptions.Multiline);
-                    //                                                        foreach (System.Text.RegularExpressions.Match g in ms)
-                    //                                                        {
-                    //                                                            wValue += g.Groups["wv"].Value.Replace("\"", "");
-                    //                                                        }
-                    //                                                    }
-                    //                                            }
-                    //                                    }
-                    //                                }
-                    //                            }
-                    //                        }
-                    //                    }
-                    //            }
-                    //    }
-                    //}
-                    #endregion
-                    if (item.ToString() == "web_trans")
+                    if (item.ToString() == "rel_word")
                     {
-                        foreach (var v in wtext["web_trans"])
+                        var rels = wtext["rel_word"]["rels"];
+                        foreach (var ws in rels.Children())
                         {
-                            if (v.HasValues)
-                            {
-                                string spk = "\"key\":(?<wk>[^\r]+)";
-                                var msk = System.Text.RegularExpressions.Regex.Matches(v.ToString(), spk);
-                                string sp = "\"value\":(?<wv>[^\r]+)";
-                                var ms = System.Text.RegularExpressions.Regex.Matches(v.ToString(), sp);
-                                if(null != msk &&  msk.Count>0)
-                                for (int i = 0; i < msk.Count; i++)
+                            if (ws.HasValues)
+                                foreach (var ws2 in ws.Children())
                                 {
-                                    wValue += msk[i].Groups["wk"].Value.Replace("\"", "").Replace(","," :") + ms[i].Groups["wv"].Value.Replace("\"", "");
+                                    string spk = "\"word\":(?<wk>[^\r]+)";
+                                    var msk = System.Text.RegularExpressions.Regex.Matches(ws2.ToString(), spk);
+                                    string spv = "\"tran\":(?<wv>[^\r]+)";
+                                    var ms = System.Text.RegularExpressions.Regex.Matches(ws2.ToString(), spv);
+                                    if (null != msk && msk.Count > 0)
+                                        for (int i = 0; i < msk.Count; i++)
+                                        {
+                                            wValue += msk[i].Groups["wk"].Value.Replace("\"", "").Replace(",", " :") + ms[i].Groups["wv"].Value.Replace("\"", "");
+                                        }
                                 }
-                                                        
-                                break;
-                            }
                         }
+
+                    }
+                    if (wtext["rel_word"] == null && item.ToString() == "syno")
+                    {
+                        var synos = wtext["syno"]["synos"];
+
+                        string spv = "\"tran\":(?<wv>[^\r]+)";
+                        var ms = System.Text.RegularExpressions.Regex.Matches(synos.ToString(), spv);
+                        if (null != ms && ms.Count > 0)
+                            for (int i = 0; i < ms.Count; i++)
+                            {
+                                wValue += ms[i].Groups["wv"].Value.Replace("\"", "");
+                            }
+                    }
+                    if (item.ToString() == "collins")
+                    {
+                        var collins = wtext["collins"];
+                        string spv = "\"star\":(?<wv>[^\r]+)";
+                        var ms = System.Text.RegularExpressions.Regex.Matches(collins.ToString(), spv);
+                        if (null != ms && ms.Count > 0)
+                            for (int i = 0; i < ms.Count; i++)
+                            {
+                                star = ms[i].Groups["wv"].Value.Replace("\"", "");
+                            }
                     }
                 }
+                if (wValue.Length == 0 && wtext["web_trans"] != null)
+                {
+                    var web_trans = wtext["web_trans"]["web-translation"];
+                    foreach (var web in web_trans.Children())
+                    {
+
+                        string spk = "\"key\":(?<wk>[^\r]+)";
+                        var msk = System.Text.RegularExpressions.Regex.Matches(web.ToString(), spk);
+                        string sp = "\"value\":(?<wv>[^\r]+)";
+                        var ms = System.Text.RegularExpressions.Regex.Matches(web.ToString(), sp);
+                        if (null != msk && msk.Count > 0)
+                            for (int i = 0; i < msk.Count; i++)
+                            {
+                                wValue += msk[i].Groups["wk"].Value.Replace("\"", "").Replace(",", " :") + ms[i].Groups["wv"].Value.Replace("\"", "");
+                            }
+
+                    }
+                }
+
             }
-            return wValue + "|"+ bIn;
+            return wValue.TrimEnd(',') + bIn + " star :" + star;
         }
     }
 }
